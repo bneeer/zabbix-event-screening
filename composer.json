@@ -1,0 +1,52 @@
+{
+    "require": {
+        "nesbot/carbon": "^2.53",
+        "neuron-core/neuron-ai": "^3.1.2",
+      "ext-curl": "*",
+        "vlucas/phpdotenv":"*"
+    },
+    "config": {
+        "preferred-install": "dist",
+        "disable-tls": false,
+        "secure-http": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "repositories": [{
+        "type": "composer",
+        "url": "https://packagist.org",
+        "options": {
+            "ssl":  {
+                "verify_peer": false,
+                "allow_self_signed": true
+            }
+        }
+    }],
+    "autoload": {
+        "psr-4": {
+            "AI\\Core\\": "libs/AI/Core/",
+            "AI\\Core\\Tools\\Itsm\\": "libs/AI/Core/Tools/Itsm/",
+            "AI\\Core\\Tools\\Zabbix\\": "libs/AI/Core/Tools/Zabbix/",
+            "AI\\Agents\\": "libs/AI/Agents/",
+            "Zabbix\\": "libs/Zabbix/",
+            "ServiceNOW\\": "libs/ServiceNOW/"
+        }
+    },
+    "scripts": {
+        "pre-autoload-dump": [
+            "php -r \"copy('libs/patches/neuron-ai/AzureOpenAIEmbeddings.php', 'vendor/neuron-core/neuron-ai/src/RAG/Embeddings/AzureOpenAIEmbeddings.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/AzureOpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/AzureOpenAI.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/OpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/OpenAI.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/HttpClientInterface.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/HttpClientInterface.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/GuzzleHttpClient.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/GuzzleHttpClient.php');\""
+        ],
+        "post-update-cmd": [
+            "php -r \"copy('libs/patches/neuron-ai/AzureOpenAIEmbeddings.php', 'vendor/neuron-core/neuron-ai/src/RAG/Embeddings/AzureOpenAIEmbeddings.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/AzureOpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/AzureOpenAI.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/OpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/OpenAI.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/HttpClientInterface.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/HttpClientInterface.php');\"",
+            "php -r \"copy('libs/patches/neuron-ai/GuzzleHttpClient.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/GuzzleHttpClient.php');\""
+        ]
+    }
+}
