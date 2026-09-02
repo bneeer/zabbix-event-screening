@@ -74,9 +74,21 @@ class ZabbixHostFinder extends Tool
             return [];
 
         } catch (\Throwable $e) {
+            $correlationId = bin2hex(random_bytes(16));
+
+            error_log(sprintf(
+                '[ZabbixHostFinder][%s] %s: %s%s',
+                $correlationId,
+                $e::class,
+                $e->getMessage(),
+                PHP_EOL . $e->getTraceAsString()
+            ));
+
             return [
                 'status' => 'error',
-                'message' => "Error finding hosts via Zabbix: " . $e->getMessage()
+                'error_code' => 'ZBX_HOST_LOOKUP_FAILED',
+                'message' => 'Unable to retrieve hosts from Zabbix.',
+                'correlation_id' => $correlationId,
             ];
         }
     }

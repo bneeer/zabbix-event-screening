@@ -13,7 +13,7 @@ class CommandValidationException extends \RuntimeException
     ) {
         $osStr = $operatingSystem ? " for OS [{$operatingSystem->value}]" : "";
         parent::__construct(
-            "Command validation failed{$osStr}: '{$command}'. Reason: {$reason}",
+            "Command validation failed{$osStr}. Reason: {$reason}",
             $code,
             $previous
         );
