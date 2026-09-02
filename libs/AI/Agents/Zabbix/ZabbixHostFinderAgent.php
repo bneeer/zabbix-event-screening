@@ -48,7 +48,6 @@ class ZabbixHostFinderAgent extends Agent
 
     protected function tools(): array
     {
-        file_put_contents(__DIR__ . '/teste.txt', "chamou a tool", FILE_APPEND);
         return [
             ZabbixHostFinder::make()
         ];

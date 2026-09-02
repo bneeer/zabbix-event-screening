@@ -18,3 +18,4 @@ define('PROXY', $_ENV['PROXY'] ?? null);
 define('ZABBIX_ENDPOINT', $_ENV['ZABBIX_ENDPOINT'] ?? null);
 define('ZABBIX_USER', $_ENV['ZABBIX_USER'] ?? null);
 define('ZABBIX_PASSWORD', $_ENV['ZABBIX_PASSWORD'] ?? null);
+define('ZABBIX_EXECUTION_TYPE', $_ENV['ZABBIX_EXECUTION_TYPE'] ?? 0);

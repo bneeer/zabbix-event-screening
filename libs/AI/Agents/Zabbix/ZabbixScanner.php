@@ -35,7 +35,7 @@ class ZabbixScanner extends Agent {
                 "2. Determine the OS of the servers to choose the appropriate command syntax.",
                 "3. Execute the commands using `ZabbixAdHocRunner` (run_zabbix_command):",
                 "   - Pass 'hostIds' and 'commands'.",
-                "   - Optionally pass 'execution_type' (0 for Agent, 2 for SSH, 3 for Telnet).",
+                "   - Pass 'operating_system' if known.",
                 "4. Review the results returned by the runner for each host ID."
             ],
 

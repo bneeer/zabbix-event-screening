@@ -109,14 +109,12 @@ EOD;
 "command 1",
 "command 2",
 "command 3"
-],
-"execution_type": 0
+]
 }
 
 Rules for output:
     * The `analysis` field must contain a concise diagnostic reasoning.
     * The `commands` field must contain only **safe read-only diagnostic commands** suitable for the target OS.
-    * The `execution_type` field must be an integer: 0 for Agent (default), 2 for SSH, 3 for Telnet.
     * Do not include explanations outside the JSON.
     * Do not include comments inside commands.
     * Commands must be ready to run directly via Zabbix API script execution.
@@ -131,8 +129,7 @@ Example output (Linux):
     "top -b -n 1",
     "ps aux --sort=-%cpu",
     "vmstat 1 5"
-],
-"execution_type": 0
+]
 }
 
 Example output (Windows):
@@ -143,8 +140,7 @@ Example output (Windows):
     "Get-Service -Name 'Spooler'",
     "Get-Process -Name 'spoolsv'",
     "Get-EventLog -LogName System -Newest 20 -EntryType Error"
-],
-"execution_type": 0
+]
 }
 EOD
     ];

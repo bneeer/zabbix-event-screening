@@ -33,6 +33,11 @@
             "ServiceNOW\\": "libs/ServiceNOW/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
     "scripts": {
         "pre-autoload-dump": [
             "php -r \"copy('libs/patches/neuron-ai/AzureOpenAIEmbeddings.php', 'vendor/neuron-core/neuron-ai/src/RAG/Embeddings/AzureOpenAIEmbeddings.php');\"",
@@ -48,5 +53,8 @@
             "php -r \"copy('libs/patches/neuron-ai/HttpClientInterface.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/HttpClientInterface.php');\"",
             "php -r \"copy('libs/patches/neuron-ai/GuzzleHttpClient.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/GuzzleHttpClient.php');\""
         ]
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.5"
     }
 }

@@ -74,8 +74,6 @@ class ZabbixHostFinder extends Tool
             return [];
 
         } catch (\Throwable $e) {
-            file_put_contents(__DIR__ . '/testes.txt', "Exception> ". $e->getMessage(), FILE_APPEND);
-
             return [
                 'status' => 'error',
                 'message' => "Error finding hosts via Zabbix: " . $e->getMessage()
