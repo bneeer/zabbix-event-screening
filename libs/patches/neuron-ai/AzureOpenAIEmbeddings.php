@@ -31,7 +31,20 @@ class AzureOpenAIEmbeddings extends OpenAIEmbeddingsProvider
     ) {
         $this->setBaseUrl();
 
-        $this->httpClient = ($httpClient ?? new GuzzleHttpClient())
+        $resolvedCa = (defined('AZURE_OPENAI_CA_BUNDLE') && AZURE_OPENAI_CA_BUNDLE)
+            ? AZURE_OPENAI_CA_BUNDLE
+            : ((defined('SSL_CA_BUNDLE') && SSL_CA_BUNDLE) ? SSL_CA_BUNDLE : null);
+
+        if ($resolvedCa !== null && $resolvedCa !== '') {
+            if (!file_exists($resolvedCa)) {
+                throw new \InvalidArgumentException("Azure OpenAI CA bundle file not found: {$resolvedCa}");
+            }
+            $verify = $resolvedCa;
+        } else {
+            $verify = true;
+        }
+
+        $this->httpClient = ($httpClient ?? new GuzzleHttpClient(verify: $verify))
             ->withBaseUri($this->baseUri)
             ->withHeaders([
                 'Accept' => 'application/json',

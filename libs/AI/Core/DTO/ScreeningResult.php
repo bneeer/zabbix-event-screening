@@ -10,8 +10,10 @@ final readonly class ScreeningResult implements \JsonSerializable, \Stringable
         public ScreeningStatus $status,
         public string $rootCauseAnalysis,
         public string $suggestedNextSteps,
-        public string $rawTechnicalOutput,
-        public string $fullText = ''
+        public string $rawTechnicalOutput = '',
+        public string $fullText = '',
+        public array $affectedHosts = [],
+        public array $commandExecutionResults = []
     ) {
         if (trim($rootCauseAnalysis) === '') {
             throw new AiContractValidationException('ScreeningResult rootCauseAnalysis cannot be empty.');
@@ -20,6 +22,31 @@ final readonly class ScreeningResult implements \JsonSerializable, \Stringable
         if (trim($suggestedNextSteps) === '') {
             throw new AiContractValidationException('ScreeningResult suggestedNextSteps cannot be empty.');
         }
+    }
+
+    public static function fromScannerResult(ScannerResult $scannerResult): self
+    {
+        return new self(
+            status: $scannerResult->status,
+            rootCauseAnalysis: $scannerResult->rootCause,
+            suggestedNextSteps: $scannerResult->suggestedNextSteps,
+            rawTechnicalOutput: $scannerResult->technicalEvidence,
+            fullText: '',
+            affectedHosts: $scannerResult->affectedHosts,
+            commandExecutionResults: $scannerResult->commandExecutionResults
+        );
+    }
+
+    public function toScannerResult(): ScannerResult
+    {
+        return new ScannerResult(
+            status: $this->status,
+            rootCause: $this->rootCauseAnalysis,
+            suggestedNextSteps: $this->suggestedNextSteps,
+            technicalEvidence: $this->rawTechnicalOutput,
+            affectedHosts: $this->affectedHosts,
+            commandExecutionResults: $this->commandExecutionResults
+        );
     }
 
     public function isSuccess(): bool

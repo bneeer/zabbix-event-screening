@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use AI\Core\Errors\ZabbixErrorCode;
 use AI\Core\Security\CommandValidator;
 use AI\Core\Tools\Zabbix\ZabbixAdHocRunner;
 use PHPUnit\Framework\TestCase;
@@ -29,8 +30,10 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
         );
 
         $this->assertSame('error', $result['status']);
-        $this->assertStringContainsString('Security boundary rejected command', $result['message']);
-        $this->assertSame('rm -rf /var/log', $result['command']);
+        $this->assertSame(ZabbixErrorCode::COMMAND_VALIDATION_FAILED->value, $result['error_code']);
+        $this->assertStringContainsString('security policy', $result['message']);
+        $this->assertNotEmpty($result['correlation_id']);
+        $this->assertArrayNotHasKey('trace', $result);
     }
 
     public function testChainedCommandNeverReachesZabbixClient(): void
@@ -49,7 +52,8 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
         );
 
         $this->assertSame('error', $result['status']);
-        $this->assertStringContainsString('Security boundary rejected command', $result['message']);
+        $this->assertSame(ZabbixErrorCode::COMMAND_VALIDATION_FAILED->value, $result['error_code']);
+        $this->assertStringContainsString('security policy', $result['message']);
     }
 
     public function testValidCommandExecutesWithDefaultAgentAndCleansUp(): void
@@ -212,7 +216,8 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
         );
 
         $this->assertSame('error', $result['status']);
-        $this->assertStringContainsString('Invalid or unsupported configured execution_type', $result['message']);
+        $this->assertSame(ZabbixErrorCode::INVALID_EXECUTION_TYPE->value, $result['error_code']);
+        $this->assertStringContainsString('execution type is invalid or unsupported', $result['message']);
     }
 
     public function testInvalidExecutionTypeConfigurationRejectedSafely(): void
@@ -229,7 +234,8 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
         );
 
         $this->assertSame('error', $result['status']);
-        $this->assertStringContainsString('Invalid or unsupported configured execution_type', $result['message']);
+        $this->assertSame(ZabbixErrorCode::INVALID_EXECUTION_TYPE->value, $result['error_code']);
+        $this->assertStringContainsString('execution type is invalid or unsupported', $result['message']);
     }
 
     public function testMultipleSafeCommandsExecuteIndividually(): void
@@ -295,8 +301,8 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
         );
 
         $this->assertSame('error', $result['status']);
-        $this->assertStringContainsString('Security boundary rejected command', $result['message']);
-        $this->assertSame('rm -rf /tmp', $result['command']);
+        $this->assertSame(ZabbixErrorCode::COMMAND_VALIDATION_FAILED->value, $result['error_code']);
+        $this->assertStringContainsString('security policy', $result['message']);
     }
 
     public function testCommandChainingCannotBeIntroducedThroughGeneratedInput(): void
@@ -329,7 +335,8 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
             );
 
             $this->assertSame('error', $result['status'], "Failed to reject chaining attempt: {$cmd}");
-            $this->assertStringContainsString('Security boundary rejected command', $result['message']);
+            $this->assertSame(ZabbixErrorCode::COMMAND_VALIDATION_FAILED->value, $result['error_code']);
+            $this->assertStringContainsString('security policy', $result['message']);
         }
     }
 
@@ -353,6 +360,7 @@ class ZabbixAdHocRunnerSecurityTest extends TestCase
         );
 
         $this->assertSame('error', $result['status']);
-        $this->assertStringContainsString('Security boundary rejected command', $result['message']);
+        $this->assertSame(ZabbixErrorCode::COMMAND_VALIDATION_FAILED->value, $result['error_code']);
+        $this->assertStringContainsString('security policy', $result['message']);
     }
 }

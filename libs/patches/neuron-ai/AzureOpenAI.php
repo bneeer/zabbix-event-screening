@@ -27,10 +27,23 @@ class AzureOpenAI extends OpenAI
     ) {
         $this->setBaseUrl();
 
+        $resolvedCa = (defined('AZURE_OPENAI_CA_BUNDLE') && AZURE_OPENAI_CA_BUNDLE)
+            ? AZURE_OPENAI_CA_BUNDLE
+            : ((defined('SSL_CA_BUNDLE') && SSL_CA_BUNDLE) ? SSL_CA_BUNDLE : null);
+
+        if ($resolvedCa !== null && $resolvedCa !== '') {
+            if (!file_exists($resolvedCa)) {
+                throw new \InvalidArgumentException("Azure OpenAI CA bundle file not found: {$resolvedCa}");
+            }
+            $verify = $resolvedCa;
+        } else {
+            $verify = true;
+        }
+
         // Create HTTP client with Azure-specific configuration
         // Azure uses Bearer token auth instead of api-key header
         // and requires api-version as a query parameter
-        $this->httpClient = ($httpClient ?? new GuzzleHttpClient())
+        $this->httpClient = ($httpClient ?? new GuzzleHttpClient(verify: $verify))
             ->withBaseUri($this->baseUri)
             ->withHeaders([
                 'Authorization' => 'Bearer ' . $this->key,

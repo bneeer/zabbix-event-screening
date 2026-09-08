@@ -30,6 +30,7 @@ class GuzzleHttpClient implements HttpClientInterface
         private readonly float $connectTimeout = 10.0,
         private readonly ?HandlerStack $handler = null,
         private readonly ?string $proxy = null,
+        private readonly string|bool $verify = true,
     ) {
     }
 
@@ -42,6 +43,7 @@ class GuzzleHttpClient implements HttpClientInterface
                 RequestOptions::HEADERS => [...$this->customHeaders, ...$request->headers],
                 RequestOptions::TIMEOUT => $this->timeout,
                 RequestOptions::CONNECT_TIMEOUT => $this->connectTimeout,
+                RequestOptions::VERIFY => $this->verify,
             ];
 
             if ($this->proxy) {
@@ -70,6 +72,7 @@ class GuzzleHttpClient implements HttpClientInterface
                 RequestOptions::TIMEOUT => $this->timeout,
                 RequestOptions::CONNECT_TIMEOUT => $this->connectTimeout,
                 RequestOptions::STREAM => true, // Enable streaming
+                RequestOptions::VERIFY => $this->verify,
             ];
 
             if ($this->proxy) {
@@ -86,7 +89,7 @@ class GuzzleHttpClient implements HttpClientInterface
 
     public function withBaseUri(string $baseUri): GuzzleHttpClient
     {
-        $new = new self($this->customHeaders, $this->timeout, $this->connectTimeout, $this->handler, $this->proxy);
+        $new = new self($this->customHeaders, $this->timeout, $this->connectTimeout, $this->handler, $this->proxy, $this->verify);
         $new->baseUri = $baseUri;
         return $new;
     }
@@ -98,7 +101,8 @@ class GuzzleHttpClient implements HttpClientInterface
             $this->timeout,
             $this->connectTimeout,
             $this->handler,
-            $this->proxy
+            $this->proxy,
+            $this->verify
         );
         $new->baseUri = $this->baseUri;
         return $new;
@@ -106,14 +110,21 @@ class GuzzleHttpClient implements HttpClientInterface
 
     public function withTimeout(float $timeout): GuzzleHttpClient
     {
-        $new = new self($this->customHeaders, $timeout, $this->connectTimeout, $this->handler, $this->proxy);
+        $new = new self($this->customHeaders, $timeout, $this->connectTimeout, $this->handler, $this->proxy, $this->verify);
         $new->baseUri = $this->baseUri;
         return $new;
     }
 
     public function withProxy(string $proxy): GuzzleHttpClient
     {
-        $new = new self($this->customHeaders, $this->timeout, $this->connectTimeout, $this->handler, $proxy);
+        $new = new self($this->customHeaders, $this->timeout, $this->connectTimeout, $this->handler, $proxy, $this->verify);
+        $new->baseUri = $this->baseUri;
+        return $new;
+    }
+
+    public function withVerify(string|bool $verify): GuzzleHttpClient
+    {
+        $new = new self($this->customHeaders, $this->timeout, $this->connectTimeout, $this->handler, $this->proxy, $verify);
         $new->baseUri = $this->baseUri;
         return $new;
     }
@@ -124,7 +135,9 @@ class GuzzleHttpClient implements HttpClientInterface
             return $this->client;
         }
 
-        $config = [];
+        $config = [
+            'verify' => $this->verify,
+        ];
 
         if ($this->handler instanceof HandlerStack) {
             $config['handler'] = $this->handler;

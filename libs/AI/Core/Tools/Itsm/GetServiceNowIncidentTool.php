@@ -50,27 +50,49 @@ class GetServiceNowIncidentTool extends Tool
             return json_encode([]);
 
         } catch (\Throwable $e) {
+            $correlationId = bin2hex(random_bytes(16));
+            error_log(sprintf(
+                '[GetServiceNowIncidentTool][%s] Failed to fetch ServiceNow record: %s%s',
+                $correlationId,
+                $e->getMessage(),
+                PHP_EOL . $e->getTraceAsString()
+            ));
+
             return json_encode([
                 'success' => false,
-                'error' => 'Failed to fetch ServiceNow record',
-                'message' => $e->getMessage()
+                'error_code' => 'SNOW_RECORD_FETCH_FAILED',
+                'message' => 'Unable to retrieve ServiceNow incident record.',
+                'correlation_id' => $correlationId,
             ]);
         }
     }
 
     protected function getClient(): Client
     {
+        $caBundle = (defined('SERVICENOW_CA_BUNDLE') && SERVICENOW_CA_BUNDLE)
+            ? SERVICENOW_CA_BUNDLE
+            : ((defined('SSL_CA_BUNDLE') && SSL_CA_BUNDLE) ? SSL_CA_BUNDLE : null);
+
+        if ($caBundle !== null && $caBundle !== '') {
+            if (!file_exists($caBundle)) {
+                throw new \RuntimeException("Configured ServiceNow CA bundle file not found: {$caBundle}");
+            }
+            $verify = $caBundle;
+        } else {
+            $verify = true;
+        }
+
         return $this->client ??= new Client([
-            'base_uri' => SERVICENOW_INSTANCE_CUSTOM_URL,
+            'base_uri' => defined('SERVICENOW_INSTANCE_CUSTOM_URL') ? SERVICENOW_INSTANCE_CUSTOM_URL : null,
             'headers' => [
-                'Authorization' => 'Basic ' . base64_encode(SERVICENOW_INSTANCE_USER . ':' . SERVICENOW_INSTANCE_PASSWORD),
+                'Authorization' => 'Basic ' . base64_encode((defined('SERVICENOW_INSTANCE_USER') ? SERVICENOW_INSTANCE_USER : '') . ':' . (defined('SERVICENOW_INSTANCE_PASSWORD') ? SERVICENOW_INSTANCE_PASSWORD : '')),
                 'Accept'        => 'application/json',
             ],
             'proxy' => [
-                'http'  => PROXY,
-                'https' => PROXY,
+                'http'  => defined('PROXY') ? PROXY : null,
+                'https' => defined('PROXY') ? PROXY : null,
             ],
-            'verify' => false,
+            'verify' => $verify,
             'timeout' => 30
         ]);
     }

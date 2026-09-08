@@ -56,5 +56,19 @@ API settings and credentials are managed through the `config/settings.php` file 
 - `SERVICENOW_INSTANCE_CUSTOM_URL`, `SERVICENOW_INSTANCE_USER`, `SERVICENOW_INSTANCE_PASSWORD`
 - `AZURE_OPENAI_KEY`, `AZURE_OPENAI_BASE_URL`, `AZURE_OPENAI_MODEL`
 
+### 🔒 TLS / SSL Security and Custom CA Configuration
+
+All outbound HTTPS connections (ServiceNOW, Zabbix API, Azure OpenAI, Composer) have TLS certificate verification enabled by default (`verify_peer=true`, `verify_host=2`, `allow_self_signed=false`).
+
+In controlled environments requiring custom internal Root or Intermediate Certificate Authorities (CAs) or self-signed certificates signed by a private CA:
+- Do **not** disable TLS verification.
+- Specify the path to your PEM-formatted CA certificate bundle using the environment variables or settings constants:
+  - `SSL_CA_BUNDLE`: Global CA bundle used by all clients if specific overrides are not provided.
+  - `SERVICENOW_CA_BUNDLE`: Custom CA certificate path for ServiceNOW API calls.
+  - `ZABBIX_CA_BUNDLE`: Custom CA certificate path for Zabbix API calls.
+  - `AZURE_OPENAI_CA_BUNDLE`: Custom CA certificate path for Azure OpenAI API calls.
+
+If a CA bundle path is configured, the application validates its existence and will abort immediately if the bundle file is not found, preventing silent fallback to unencrypted or unverified communication.
+
 ---
 *This system was developed to assist operations teams (SRE/NOC), reducing mean time to repair (MTTR) through automated initial analysis.*

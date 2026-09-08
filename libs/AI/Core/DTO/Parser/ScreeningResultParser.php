@@ -9,35 +9,39 @@ use AI\Core\Exceptions\AiContractValidationException;
 final class ScreeningResultParser
 {
     /**
-     * Parses the LLM agent text output into a typed ScreeningResult DTO.
+     * Parses the LLM agent output into a typed ScreeningResult DTO.
+     * Supports both structured JSON contracts and legacy text formats.
      *
-     * Expected sections:
-     * 0- STATUS RESULT:
-     * ######SUCCESS######## (or other valid ScreeningStatus)
-     *
-     * 1- ROOT-CAUSE ANALYSIS:
-     * ...
-     *
-     * 2- SUGGESTED NEXT STEPS:
-     * ...
-     *
-     * 3- TECHNICAL OUTPUT (RAW):
-     * ...
-     *
-     * @param string $rawOutput
+     * @param string|array<string, mixed> $rawOutput
      * @return ScreeningResult
      * @throws AiContractValidationException
      */
-    public static function parse(string $rawOutput): ScreeningResult
+    public static function parse(string|array $rawOutput): ScreeningResult
     {
+        if (is_array($rawOutput)) {
+            $scannerResult = ScannerResultParser::parse($rawOutput);
+            return ScreeningResult::fromScannerResult($scannerResult);
+        }
+
         $trimmed = trim($rawOutput);
         if ($trimmed === '') {
             throw new AiContractValidationException('Screening agent output cannot be empty.');
         }
 
+        // If input starts with JSON or markdown code block, parse via structured ScannerResultParser
+        if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '```json') || str_starts_with($trimmed, '```')) {
+            $scannerResult = ScannerResultParser::parse($trimmed);
+            return ScreeningResult::fromScannerResult($scannerResult);
+        }
+
         // 0- STATUS RESULT:
         if (!preg_match('/0-\s*STATUS RESULT:\s*([^\n\r]+)/i', $trimmed, $statusMatches)) {
-            throw new AiContractValidationException('Missing "0- STATUS RESULT:" section in screening output.');
+            try {
+                $scannerResult = ScannerResultParser::parse($trimmed);
+                return ScreeningResult::fromScannerResult($scannerResult);
+            } catch (\Throwable) {
+                throw new AiContractValidationException('Missing "0- STATUS RESULT:" section in screening output.');
+            }
         }
 
         $rawStatus = trim($statusMatches[1]);

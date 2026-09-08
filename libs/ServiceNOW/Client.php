@@ -12,14 +12,15 @@ class Client
     private ?string $username = null;
     private ?String $password = null;
     private String $proxy, $base_url;
-    private bool $secure;
-    private ?String $authentication_type, $certificate_file, $certificate_key, $certificate_ca, $certificate_pass, $client_id, $client_secret, $access_token, $refresh_token, $oauth_url;
+    private bool $secure = true;
+    private ?string $ca_bundle = null;
+    private ?String $authentication_type = null, $certificate_file = null, $certificate_key = null, $certificate_ca = null, $certificate_pass = null, $client_id = null, $client_secret = null, $access_token = null, $refresh_token = null, $oauth_url = null;
  
     /*
      * Passing ServiceNOW Native credentials through class constructor.
      * Example: $SNowClient = new AutomationSNOWClient();
     */
-    public function __construct(string $instance, string $authentication_type, array $authentication_data, string $proxy = "", bool $secure = true, bool $custom_url = false)
+    public function __construct(string $instance, string $authentication_type, array $authentication_data, string $proxy = "", bool $secure = true, bool $custom_url = false, ?string $ca_bundle = null)
     {
         $this->instance = $instance;
         $this->proxy = $proxy;
@@ -28,20 +29,43 @@ class Client
         $this->authentication_type = $authentication_type;
 
         if ($authentication_type === 'basic') {
-            $this->username = $authentication_data['username'];
-            $this->password = $authentication_data['password'];
+            $this->username = $authentication_data['username'] ?? null;
+            $this->password = $authentication_data['password'] ?? null;
         } elseif ($authentication_type === 'oauth') {
-            $this->username = $authentication_data['username'];
-            $this->password = $authentication_data['password'];
-            $this->client_id = $authentication_data['client_id'];
-            $this->client_secret = $authentication_data['client_secret'];
+            $this->username = $authentication_data['username'] ?? null;
+            $this->password = $authentication_data['password'] ?? null;
+            $this->client_id = $authentication_data['client_id'] ?? null;
+            $this->client_secret = $authentication_data['client_secret'] ?? null;
             $this->oauth_url = 'https://' . $instance . '.service-now.com/oauth_token.do';
         } elseif ($authentication_type === 'cert') {
-            $this->certificate_file = $authentication_data['certificate_file'];
-            $this->certificate_key = $authentication_data['certificate_key'];
-            $this->certificate_ca = $authentication_data['certificate_ca'];
-            $this->certificate_pass = $authentication_data['certificate_pass'];
+            $this->certificate_file = $authentication_data['certificate_file'] ?? null;
+            $this->certificate_key = $authentication_data['certificate_key'] ?? null;
+            $this->certificate_ca = $authentication_data['certificate_ca'] ?? null;
+            $this->certificate_pass = $authentication_data['certificate_pass'] ?? null;
         }
+
+        $resolvedCa = $ca_bundle
+            ?? $this->certificate_ca
+            ?? (defined('SERVICENOW_CA_BUNDLE') && SERVICENOW_CA_BUNDLE ? SERVICENOW_CA_BUNDLE : null)
+            ?? (defined('SSL_CA_BUNDLE') && SSL_CA_BUNDLE ? SSL_CA_BUNDLE : null);
+
+        if ($resolvedCa !== null && $resolvedCa !== '') {
+            if (!file_exists($resolvedCa)) {
+                throw new \InvalidArgumentException("ServiceNOW CA bundle file not found: {$resolvedCa}");
+            }
+            $this->ca_bundle = $resolvedCa;
+            $this->certificate_ca = $resolvedCa;
+        }
+    }
+
+    public function getCaBundle(): ?string
+    {
+        return $this->ca_bundle;
+    }
+
+    public function isSecure(): bool
+    {
+        return $this->secure;
     }
 
     private function _oauthLogin($refresh = false): array
@@ -66,9 +90,10 @@ class Client
             curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($payload));
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            if (!$this->secure) {
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->secure);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->secure ? 2 : 0);
+            if (!empty($this->ca_bundle)) {
+                curl_setopt($ch, CURLOPT_CAINFO, $this->ca_bundle);
             }
             $result = curl_exec($ch);
             if ($result === false) {
@@ -88,7 +113,21 @@ class Client
             curl_close($ch);
             return ["status" => true, "data" => $response];
         } catch (\Exception $e) {
-            return ["status" => false, "ErrorCode" => $e->getCode(), "Message" => $e->getMessage(), "trace" => $e->getTraceAsString(), "Timestamp" => date("Y-m-d H:i:s")];
+            $correlationId = bin2hex(random_bytes(16));
+            error_log(sprintf(
+                '[ServiceNOW\Client][%s] OAuth login error: %s%s',
+                $correlationId,
+                $e->getMessage(),
+                PHP_EOL . $e->getTraceAsString()
+            ));
+
+            return [
+                "status" => false,
+                "ErrorCode" => $e->getCode(),
+                "Message" => "Authentication failed with ServiceNow instance.",
+                "correlation_id" => $correlationId,
+                "Timestamp" => date("Y-m-d H:i:s")
+            ];
         }
     }
 
@@ -153,9 +192,10 @@ class Client
                 $headers[] = 'Content-Type: application/json';
             }
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            if (!$this->secure) {
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->secure);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->secure ? 2 : 0);
+            if (!empty($this->ca_bundle)) {
+                curl_setopt($ch, CURLOPT_CAINFO, $this->ca_bundle);
             }
             $result = curl_exec($ch);
             if ($result === false) {
@@ -181,15 +221,21 @@ class Client
     {
         try {
             $authHeader = 'Authorization: Basic ' . base64_encode($this->username . ":" . $this->password);
+            $sslOptions = [
+                'verify_peer' => $this->secure,
+                'verify_peer_name' => $this->secure,
+                'allow_self_signed' => false,
+            ];
+
+            if (!empty($this->ca_bundle)) {
+                $sslOptions['cafile'] = $this->ca_bundle;
+            }
+
             $context = stream_context_create([
                 'http' => [
                     'header' => $authHeader
                 ],
-                'ssl' => [
-                    'verify_peer' => $this->secure,
-                    'verify_peer_name' => $this->secure,
-                    'allow_self_signed' => !$this->secure
-                ]
+                'ssl' => $sslOptions
             ]);
 
             $handle = fopen($download_link, "rb", false, $context);

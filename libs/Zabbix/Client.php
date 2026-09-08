@@ -14,14 +14,27 @@ class Client
 
     public int $version = 6;
 
-    public bool $secure = false;
+    public bool $secure = true;
+    public ?string $ca_bundle = null;
 
-    public function __construct($api_endpoint, $username, $password, $version = 6)
+    public function __construct($api_endpoint, $username, $password, $version = 6, bool $secure = true, ?string $ca_bundle = null)
     {
         $this->api_endpoint = $api_endpoint;
         $this->username = $username;
         $this->password = $password;
         $this->version = $version;
+        $this->secure = $secure;
+
+        $resolvedCa = $ca_bundle
+            ?? (defined('ZABBIX_CA_BUNDLE') && ZABBIX_CA_BUNDLE ? ZABBIX_CA_BUNDLE : null)
+            ?? (defined('SSL_CA_BUNDLE') && SSL_CA_BUNDLE ? SSL_CA_BUNDLE : null);
+
+        if ($resolvedCa !== null && $resolvedCa !== '') {
+            if (!file_exists($resolvedCa)) {
+                throw new \InvalidArgumentException("Zabbix CA bundle file not found: {$resolvedCa}");
+            }
+            $this->ca_bundle = $resolvedCa;
+        }
 
         $login_params = [
             "jsonrpc" => "2.0",
@@ -67,7 +80,10 @@ class Client
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_PROXY, '');
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->secure);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->secure);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, $this->secure ? 2 : 0);
+            if (!empty($this->ca_bundle)) {
+                curl_setopt($ch, CURLOPT_CAINFO, $this->ca_bundle);
+            }
             $response = curl_exec($ch);
             curl_close($ch);
             $result = json_decode($response, true, 512, JSON_THROW_ON_ERROR);

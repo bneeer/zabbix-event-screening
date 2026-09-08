@@ -13,18 +13,9 @@
             "php-http/discovery": true
         }
     },
-    "repositories": [{
-        "type": "composer",
-        "url": "https://packagist.org",
-        "options": {
-            "ssl":  {
-                "verify_peer": false,
-                "allow_self_signed": true
-            }
-        }
-    }],
     "autoload": {
         "psr-4": {
+            "AI\\Application\\": "libs/AI/Application/",
             "AI\\Core\\": "libs/AI/Core/",
             "AI\\Core\\Tools\\Itsm\\": "libs/AI/Core/Tools/Itsm/",
             "AI\\Core\\Tools\\Zabbix\\": "libs/AI/Core/Tools/Zabbix/",

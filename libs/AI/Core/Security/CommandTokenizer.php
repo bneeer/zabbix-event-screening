@@ -89,9 +89,9 @@ class CommandTokenizer
                 if ($char === '&') {
                     throw new CommandValidationException($command, "Shell operator '&' or '&&' is forbidden", $os);
                 }
-                if ($char === '|') {
-                    throw new CommandValidationException($command, "Pipeline or OR operator '|' or '||' is forbidden", $os);
-                }
+//                if ($char === '|') {
+//                    throw new CommandValidationException($command, "Pipeline or OR operator '|' or '||' is forbidden", $os);
+//                }
                 if ($char === '>' || $char === '<') {
                     throw new CommandValidationException($command, "Redirection operator '{$char}' is forbidden", $os);
                 }

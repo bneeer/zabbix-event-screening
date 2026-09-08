@@ -56,9 +56,19 @@ class OpenAI implements AIProviderInterface
         protected bool $strict_response = false,
         ?HttpClientInterface $httpClient = null
     ) {
+        $resolvedCa = (defined('SSL_CA_BUNDLE') && SSL_CA_BUNDLE ? SSL_CA_BUNDLE : null);
+        if ($resolvedCa !== null && $resolvedCa !== '') {
+            if (!file_exists($resolvedCa)) {
+                throw new \InvalidArgumentException("OpenAI CA bundle file not found: {$resolvedCa}");
+            }
+            $verify = $resolvedCa;
+        } else {
+            $verify = true;
+        }
+
         // Use the provided client or create default Guzzle client
         // Provider always configures authentication and base URI
-        $this->httpClient = ($httpClient ?? new GuzzleHttpClient())
+        $this->httpClient = ($httpClient ?? new GuzzleHttpClient(verify: $verify))
             ->withBaseUri($this->baseUri)
             ->withHeaders([
                 'Accept' => 'application/json',
