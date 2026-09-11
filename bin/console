@@ -1,0 +1,106 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Command line entrypoint.
+ *
+ *   bin/console daemon              Run the continuous ServiceNOW polling daemon
+ *   bin/console screen <INC>        Screen a single ticket and print the report
+ *   bin/console migrate             Create the database if needed and apply migrations
+ *   bin/console migrate:status      Show applied / pending migrations
+ *   bin/console migrate:rollback    Roll back the last migration
+ *   bin/console db:check            Verify database connectivity (exit 0/1)
+ *   bin/console config:check        Validate configuration without contacting services
+ */
+
+require __DIR__ . '/../src/loader.php';
+
+use AI\Application\Daemon\DaemonConfig;
+use AI\Application\Kernel;
+use AI\Infrastructure\Database\Migrations\Migrator;
+use AI\Infrastructure\Persistence\ScreeningRepository;
+
+$kernel = new Kernel(dirname(__DIR__));
+$logger = $kernel->logger()->withChannel('console');
+$command = $argv[1] ?? 'help';
+
+try {
+    switch ($command) {
+        case 'daemon':
+            exit($kernel->daemon()->run());
+
+        case 'screen':
+            $number = $argv[2] ?? null;
+            if ($number === null) {
+                fwrite(STDERR, "Usage: bin/console screen <INCIDENT_NUMBER>\n");
+                exit(2);
+            }
+
+            $pdo = $kernel->database();
+            $repository = new ScreeningRepository($pdo);
+            $repository->register($number, null, SERVICENOW_POLL_TABLE, null);
+            $repository->claim($number);
+
+            try {
+                $result = $kernel->screeningService()->screenIncident(
+                    incidentNumber: $number,
+                    outputDirectory: DAEMON_OUTPUT_DIR,
+                    onProgress: static fn (string $chunk) => print($chunk)
+                );
+                $repository->markCompleted($number, $result);
+                echo "\n" . $result->getItsmOutput() . "\n";
+            } catch (\Throwable $e) {
+                $repository->markFailed($number, $e->getMessage());
+                throw $e;
+            }
+            exit(0);
+
+        case 'migrate':
+            $kernel->database();
+            exit(0);
+
+        case 'migrate:status':
+            $factory = $kernel->connectionFactory();
+            if (!$factory->databaseExists()) {
+                echo "Database does not exist yet: {$factory->config()->describe()}\n";
+                exit(0);
+            }
+            $migrator = new Migrator($factory->connect(), $kernel->migrationsPath());
+            $applied = $migrator->appliedVersions();
+            foreach ($migrator->discover() as $version => $file) {
+                printf("[%s] %s\n", in_array($version, $applied, true) ? 'x' : ' ', basename($file, '.php'));
+            }
+            exit(0);
+
+        case 'migrate:rollback':
+            $migrator = new Migrator($kernel->connectionFactory()->connect(), $kernel->migrationsPath());
+            $version = $migrator->rollback();
+            echo $version === null ? "Nothing to roll back.\n" : "Rolled back {$version}.\n";
+            exit(0);
+
+        case 'db:check':
+            $factory = $kernel->connectionFactory();
+            $exists = $factory->databaseExists();
+            echo $factory->config()->describe() . ' - ' . ($exists ? 'reachable, database exists' : 'reachable, database missing') . "\n";
+            exit(0);
+
+        case 'config:check':
+            $kernel->databaseConfig();
+            DaemonConfig::fromEnvironment();
+            echo "Configuration OK\n";
+            exit(0);
+
+        case 'help':
+        default:
+            echo "Usage: bin/console <daemon|screen <INC>|migrate|migrate:status|migrate:rollback|db:check|config:check>\n";
+            exit($command === 'help' ? 0 : 2);
+    }
+} catch (\Throwable $e) {
+    $logger->error($e->getMessage(), ['exception' => get_class($e)]);
+    if (APP_ENV !== 'production') {
+        fwrite(STDERR, $e->getTraceAsString() . "\n");
+    }
+    exit(1);
+}

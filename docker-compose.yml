@@ -1,0 +1,72 @@
+# Local / single-host deployment.
+#
+#   docker compose up -d                       -> daemon with local SQLite (volume "screening-data")
+#   docker compose --profile postgres up -d    -> daemon + PostgreSQL (set DB_DRIVER=pgsql, DB_HOST=postgres, DB_USER, DB_PASSWORD in .env)
+#   docker compose --profile mysql up -d       -> daemon + MySQL      (set DB_DRIVER=mysql, DB_HOST=mysql, DB_USER, DB_PASSWORD in .env)
+#   docker compose run --rm screening screen INC0012345
+#
+# All settings come from .env (see .env.example). Real environment variables win.
+
+services:
+  screening:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zabbix-event-screening:latest
+    container_name: zabbix-event-screening
+    restart: unless-stopped
+    env_file:
+      - .env.old
+    environment:
+      APP_STORAGE_PATH: /var/lib/zabbix-event-screening
+      DB_SQLITE_PATH: /var/lib/zabbix-event-screening/database.sqlite
+      DAEMON_HEARTBEAT_FILE: /var/lib/zabbix-event-screening/daemon.heartbeat
+      DAEMON_OUTPUT_DIR: /var/lib/zabbix-event-screening/screenings
+    volumes:
+      - screening-data:/var/lib/zabbix-event-screening
+      # Mount internal CA bundles read-only if needed and point SSL_CA_BUNDLE to them:
+      # - ./certs:/certs:ro
+    stop_grace_period: 15m   # let an in-flight screening finish before SIGKILL
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-zabbix_event_screening}
+      POSTGRES_USER: ${DB_USER:-screening}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-screening} -d ${DB_NAME:-zabbix_event_screening}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mysql:
+    image: mysql:8.4
+    profiles: ["mysql"]
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-zabbix_event_screening}
+      MYSQL_USER: ${DB_USER:-screening}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-change-me}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER:-screening}", "-p${DB_PASSWORD:-change-me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  screening-data:
+  postgres-data:
+  mysql-data:

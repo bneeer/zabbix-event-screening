@@ -1,10 +1,31 @@
 <?php
-ini_set('error_reporting', E_ALL);
-date_default_timezone_set('America/Sao_Paulo');
 
-require __DIR__ .'/../vendor/autoload.php';
+declare(strict_types=1);
 
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ .'/../');
-$dotenv->load();
+/*
+ * Application bootstrap. Safe to require multiple times.
+ *
+ * 1. Composer autoload
+ * 2. Optional .env file (never overrides real environment variables)
+ * 3. Constants derived from the environment (config/settings.php)
+ * 4. Runtime defaults (timezone, error reporting)
+ */
 
-require __DIR__ .'/../config/settings.php';
+if (defined('APP_BOOTSTRAPPED')) {
+    return;
+}
+define('APP_BOOTSTRAPPED', true);
+
+$projectRoot = dirname(__DIR__);
+
+require $projectRoot . '/vendor/autoload.php';
+
+if (is_readable($projectRoot . '/.env')) {
+    Dotenv\Dotenv::createImmutable($projectRoot)->safeLoad();
+}
+
+require $projectRoot . '/config/settings.php';
+
+error_reporting(E_ALL);
+ini_set('display_errors', APP_ENV === 'production' ? 'stderr' : '1');
+date_default_timezone_set(APP_TIMEZONE);

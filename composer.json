@@ -1,10 +1,20 @@
 {
     "require": {
+        "php": ">=8.2",
         "nesbot/carbon": "^2.53",
         "neuron-core/neuron-ai": "^3.1.2",
-      "ext-curl": "*",
+        "ext-curl": "*",
+        "ext-pdo": "*",
+        "ext-json": "*",
         "vlucas/phpdotenv":"*"
     },
+    "suggest": {
+        "ext-pdo_sqlite": "Local zero-config persistence (default when no DB_HOST is set)",
+        "ext-pdo_mysql": "Remote MySQL/MariaDB persistence",
+        "ext-pdo_pgsql": "Remote PostgreSQL persistence",
+        "ext-pcntl": "Graceful daemon shutdown on SIGTERM (Linux containers)"
+    },
+    "bin": ["bin/console"],
     "config": {
         "preferred-install": "dist",
         "disable-tls": false,
@@ -20,6 +30,7 @@
             "AI\\Core\\Tools\\Itsm\\": "libs/AI/Core/Tools/Itsm/",
             "AI\\Core\\Tools\\Zabbix\\": "libs/AI/Core/Tools/Zabbix/",
             "AI\\Agents\\": "libs/AI/Agents/",
+            "AI\\Infrastructure\\": "libs/AI/Infrastructure/",
             "Zabbix\\": "libs/Zabbix/",
             "ServiceNOW\\": "libs/ServiceNOW/"
         }
@@ -30,20 +41,18 @@
         }
     },
     "scripts": {
-        "pre-autoload-dump": [
+        "patch-neuron": [
             "php -r \"copy('libs/patches/neuron-ai/AzureOpenAIEmbeddings.php', 'vendor/neuron-core/neuron-ai/src/RAG/Embeddings/AzureOpenAIEmbeddings.php');\"",
             "php -r \"copy('libs/patches/neuron-ai/AzureOpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/AzureOpenAI.php');\"",
             "php -r \"copy('libs/patches/neuron-ai/OpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/OpenAI.php');\"",
             "php -r \"copy('libs/patches/neuron-ai/HttpClientInterface.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/HttpClientInterface.php');\"",
             "php -r \"copy('libs/patches/neuron-ai/GuzzleHttpClient.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/GuzzleHttpClient.php');\""
         ],
-        "post-update-cmd": [
-            "php -r \"copy('libs/patches/neuron-ai/AzureOpenAIEmbeddings.php', 'vendor/neuron-core/neuron-ai/src/RAG/Embeddings/AzureOpenAIEmbeddings.php');\"",
-            "php -r \"copy('libs/patches/neuron-ai/AzureOpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/AzureOpenAI.php');\"",
-            "php -r \"copy('libs/patches/neuron-ai/OpenAI.php', 'vendor/neuron-core/neuron-ai/src/Providers/OpenAI/OpenAI.php');\"",
-            "php -r \"copy('libs/patches/neuron-ai/HttpClientInterface.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/HttpClientInterface.php');\"",
-            "php -r \"copy('libs/patches/neuron-ai/GuzzleHttpClient.php', 'vendor/neuron-core/neuron-ai/src/HttpClient/GuzzleHttpClient.php');\""
-        ]
+        "pre-autoload-dump": "@patch-neuron",
+        "post-update-cmd": "@patch-neuron",
+        "test": "phpunit",
+        "daemon": "php bin/console daemon",
+        "migrate": "php bin/console migrate"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.5"
